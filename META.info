@@ -1,0 +1,11 @@
+{
+  "name"        : "XML::XPath",
+  "version"     : "*",
+  "description" : "An XPath 2.0 implementation for Perl6",
+  "depends"     : [ "XML" ],
+  "provides"    : {
+    "XML::XPath"          : "lib/XML/XPath.pm6",
+    "XML::XPath::Grammar" : "lib/XML/XPath/Grammar.pm6"
+  },
+  "source-url"  : "git://github.com/fjwhittle/p6-xml-xpath.git"
+}
