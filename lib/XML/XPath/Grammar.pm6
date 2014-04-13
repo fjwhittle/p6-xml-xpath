@@ -36,9 +36,9 @@ rule RangeExpr { <AdditiveExpr>** 1..2 % [ 'to' ]  }
 
 rule AdditiveExpr { <MultiplicativeExpr> + % $<op> = <[ + - ]> }
 
-rule MultiplicativeExpr { <UnionExpr> + % $<op> =  [ || < * div idiv mod > ] }
+rule MultiplicativeExpr { <UnionExpr> + % $<op> =  [|| < * div idiv mod >] }
 
-rule UnionExpr { <IntersectExceptExpr> + % $<op> = [ || < union | > ] }
+rule UnionExpr { <IntersectExceptExpr> + % $<op> = [|| < union | >]  }
 
 rule IntersectExceptExpr { <InstanceofExpr> + % $<op> = [ || < intersect except > ] }
 

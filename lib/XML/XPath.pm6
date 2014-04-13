@@ -110,7 +110,7 @@ method MultiplicativeExpr(Match $match) {
 	given ($op ~ '') {
 	    $value *= $nextval when '*';
 	    $value /= $nextval when 'div';
-	    $value = $value div $nextval when 'idiv';
+	    $value = Int($value) div Int($nextval) when 'idiv';
 	    $value %= $nextval when 'mod';
 	}
     }
