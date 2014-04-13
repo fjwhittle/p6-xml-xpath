@@ -45,7 +45,7 @@ XML tree and comparison operations.  So far, the following is implemented:
 	
 ```
 
-`evaluate(**Str** _$expr_)` produces an _Array_ of results matching _`$expr`_,
+`evaluate(Str $expr)` produces an _Array_ of results matching _`$expr`_,
 be they XML::Nodes or literal values.
 
 ## Author
