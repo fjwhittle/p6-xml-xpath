@@ -6,13 +6,9 @@ grammar XML::XPath::Grammar;
 
 rule TOP { <Expr> }
 
-token ws {
-    [\s || <.comment>]*
-}
+regex ws { [ <!ww> \s || <.comment> ]* }
 
-token comment {
-    '(:' [ <comment> || . ]*? ':)'
-}
+regex comment { '(:' [ <.comment> || . ]*? ':)' }
 
 rule Expr { <ExprSingle>+ % ',' }
 
@@ -96,8 +92,8 @@ token Literal { <NumericLiteral> || <StringLiteral> }
 
 token NumericLiteral { [ [\d*\.]? \d+ ][ <[e E]> <[+ -]>? \d+ ]? }
 
-rule StringLiteral { $<q>="'" <( [\'**2||<-[']>]* )> "'" ||
-                     $<q>='"' <( [\"**2||<-["]>]* )> '"' }
+token StringLiteral { $<q>="'" <( [\'**2 || <-[']>]* )> "'" ||
+                      $<q>='"' <( [\"**2 || <-["]>]* )> '"' }
 
 rule ParenthesizedExpr { '(' <Expr>? ')' }
 
