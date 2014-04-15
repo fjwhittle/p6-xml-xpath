@@ -42,17 +42,15 @@ method ExprSingle(Match $match) {
 method OrExpr(Match $match) {
     my $return;
     for @($match<AndExpr>) -> $submatch {
-	if $return = self.AndExpr($submatch) {
-	    return $return;
-	}
+	return $return if $return = self.AndExpr($submatch);
     }
-    return ($return === 0 ?? $return !! Nil);
+    return $return;
 }
 
 method AndExpr(Match $match) {
     my $return;
     for @($match<ComparisonExpr>) -> $submatch {
-	return ($return === 0 ?? $return !! Nil) if !($return = self.ComparisonExpr($submatch));
+	return $return if !($return = self.ComparisonExpr($submatch));
     }
     return $return;
 }
