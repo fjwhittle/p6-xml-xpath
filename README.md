@@ -41,12 +41,36 @@ XML tree and comparison operations.  So far, the following is implemented:
 ```perl
 
 	my $xp = XPath.new();
+	
+	my Str $expr = q{"An XPath 2.0 Expression"};
+	
 	my @result := $xp.evaluate($expr);
 	
 ```
 
 `evaluate(Str $expr)` produces an _Array_ of results matching _`$expr`_,
 be they XML::Nodes or literal values.
+
+## Roadmap / ToDo
+
+Planned implementation order at this point is:
+
+1. Comparison operators
+2. XML Contexts
+3. Node Tests
+4. Attribute Tests
+5. More advanced axes
+6. ...
+
+## How can I help?
+
+As they say in Perl estate; test cases, test cases, test cases; we can always
+use more.
+So far I've been developing on an implement and test basis - starting from point
+3 above the plan is to move to test-driven development.
+You're welcome to start implementing features as well.  Any pull requests are
+expected to either include tests or be for something that already has tests
+written.
 
 ## Author
 
