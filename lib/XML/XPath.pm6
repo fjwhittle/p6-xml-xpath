@@ -65,15 +65,23 @@ method AndExpr(Match $match) {
 
 method ComparisonExpr(Match $match) {
     if $match<RangeExpr>.elems > 1 {
-	return self.ValueComp($match) if $match<ValueComp>:exists;
-	return self.GeneralComp($match) if $match<GeneralComp>:exists;
-	return self.NodeComp($match) if $match<NodeComp>:exists;
+	if my $op = $match<ValueComp> {
+	    # TODO: Find if there's a better way to get an op coderef from a string; EVAL feels dirty.
+	    $op = EVAL "&infix:['$op']";
+	    return $op(|map { self.RangeExpr($_) }, $match<RangeExpr>[0,1]);
+	} elsif $op = $match<GeneralComp> {
+	    # XPath's rule differ from Perl's junctions'
+	    return ?[⊖] map { self.RangeExpr($_) }, $match<RangeExpr>[0,1] if $op eq '!=';
+	    return self.RangeExpr($match<RangeExpr>[0]).all ne self.RangeExpr($match<RangeExpr>[1]).all
+	      if $op eq '!=';
+	    for qw{= eq < lt <= le > gt >= ge} -> $a, $b {
+		$op eq $a and $op = EVAL "&infix:['$b']";
+	    }
+	    return ?$op(|map { self.RangeExpr($_).any }, $match<RangeExpr>[0,1]);
+	}
+	return self.NodeComp($match) if $match<NodeComp>;
     }
     return self.RangeExpr($match<RangeExpr>[0]);
-}
-
-method ValueComp(Match $match) {
-    
 }
 
 method RangeExpr(Match $match) {
@@ -125,8 +133,8 @@ method MultiplicativeExpr(Match $match) {
 }
 
 method UnionExpr(Match $match) {
-    my $value = [(|)] map { self.IntersectExceptExpr($_) },  @($match<IntersectExceptExpr>);
-    
+    my $value = [∪] map { self.IntersectExceptExpr($_) },  @($match<IntersectExceptExpr>);
+
     return $value.end ?? $value.keys !! $value.keys[0];
 }
 
