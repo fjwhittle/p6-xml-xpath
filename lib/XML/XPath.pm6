@@ -13,10 +13,18 @@ method cache(XML::XPath:T:) {
     %expr_cache;
 }
 
-method evaluate(Str $expr) {
-    my $match = %expr_cache{$expr} //= XML::XPath::Grammar.parse($expr);
+multi method evaluate(XML::XPath:D: Str $expr) {
+    my $match = %expr_cache{$expr} //= XML::XPath::Grammar.parse($expr, :rule<Expr>);
 
-    return self.Expr($match<Expr>);
+    $match.isa(Match:D) and return self.Expr($match);
+
+    warn 'Parse error';
+
+    return Nil;
+}
+
+multi method evaluate(XML::XPath:U: Str $expr) {
+    return self.new.evaluate($expr);
 }
 
 method !Something(Match $match) {
