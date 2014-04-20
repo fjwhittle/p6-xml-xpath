@@ -29,9 +29,10 @@ XML tree and comparison operations.  So far, the following is implemented:
 * Unary negation
 * Numeric arithmetic and String concatenation
 * Range expressions
-* Set operations ( union, intersect, except )
+* Set operations ( union, intersect, except ) (_BUGGY_)
 * And, Or
-* Filters ( [] ) -- fairly useless without comparison operators
+* Value and Generic (set) comparison
+* Filters ( [] )
 * Initial boilerplate for path expressions - but don't expect it to do anything
   useful until XML can be found.
 * (Nested) Comments
@@ -40,11 +41,13 @@ XML tree and comparison operations.  So far, the following is implemented:
 
 ```perl
 
-	my $xp = XPath.new();
+	my $xp = XML::XPath.new();
 	
 	my Str $expr = q{"An XPath 2.0 Expression"};
 	
 	my @result := $xp.evaluate($expr);
+
+	my @tresult := XML::XPath.evaluate($expr);
 	
 ```
 
@@ -55,12 +58,11 @@ be they XML::Nodes or literal values.
 
 Planned implementation order at this point is:
 
-1. Comparison operators
-2. XML Contexts
-3. Node Tests
-4. Attribute Tests
-5. More advanced axes
-6. ...
+1. XML Contexts
+2. Node Tests
+3. Attribute Tests
+4. More advanced axes
+5. ...
 
 ## How can I help?
 
