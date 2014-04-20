@@ -79,10 +79,10 @@ method RangeExpr(Match $match) {
 
 method AdditiveExpr(Match $match) {
     my $value = self.MultiplicativeExpr($match<MultiplicativeExpr>[0]);
-    
+
     for @($match<MultiplicativeExpr>[1..*]) Z @($match<op>) -> $next, $op {
 	my $nextval = self.MultiplicativeExpr($next);
-	
+
 	if $value.does(Str) || $nextval.does(Str) {
 	    given ($op ~ '') {
 		$value ~= $nextval when '+';
@@ -127,9 +127,9 @@ method IntersectExceptExpr(Match $match_in) {
 	op => $match_in<op>,
 	UnaryExpr => ($_<TreatExpr><CastableExpr><CastExpr><UnaryExpr> for @($match_in<InstanceofExpr>)),
     );
-	
+
     my $value = self.UnaryExpr($match<UnaryExpr>[0]);
-    
+
     if $match<UnaryExpr>.elems > 1 {
 	$value.isa(List) or $value = [ $value ];
 
@@ -148,7 +148,7 @@ method IntersectExceptExpr(Match $match_in) {
 
 	$value = $value.keys;
     }
-	
+
     return $value;
 }
 
@@ -159,7 +159,7 @@ method UnaryExpr(Match $match) {
     my $value = self.PathExpr($match<ValueExpr>);
 
     $value = -$value if $neg && $value.does(Numeric);
-    
+
     return $value;
 }
 
@@ -184,7 +184,7 @@ method PrimaryExpr(Match $match) {
 method FilterExpr(Match $match) {
     temp $!context = self.PrimaryExpr($match<PrimaryExpr>);
     for @($match<Predicate>) -> $pred {
-	return Nil unless self.Expr($pred<Expr>); 
+	return Nil unless self.Expr($pred<Expr>);
     }
     return $!context;
 }
