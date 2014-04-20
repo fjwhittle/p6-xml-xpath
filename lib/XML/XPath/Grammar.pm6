@@ -1,7 +1,5 @@
 use v6;
 
-#use Grammar::Tracer;
-
 grammar XML::XPath::Grammar;
 
 rule TOP { <Expr> }
@@ -48,7 +46,7 @@ rule CastExpr { <UnaryExpr> [ 'cast' 'as' <SingleType> ]? }
 
 rule UnaryExpr { $<op> = [<[+-]> *] <ValueExpr=.PathExpr> }
 
-token GeneralComp { '=' || '!=' || '<' ||'<=' || '>' || '>=' }
+token GeneralComp { '=' || '!='  || '<=' || '<' || '>=' || '>'  }
 
 token ValueComp { || < eq ne lt le gt ge > }
 
