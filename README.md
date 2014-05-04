@@ -33,8 +33,8 @@ XML tree and comparison operations.  So far, the following is implemented:
 * And, Or
 * Value and Generic (set) comparison
 * Filters ( [] )
-* Initial boilerplate for path expressions - but don't expect it to do anything
-  useful until XML can be found.
+* Initial boilerplate for path expressions
+* Basic name tests for child and descendant nodes
 * (Nested) Comments
 
 ## Usage
