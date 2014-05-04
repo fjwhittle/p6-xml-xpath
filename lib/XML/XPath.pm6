@@ -4,7 +4,7 @@ class XML::XPath;
 
 use XML::XPath::Grammar;
 
-has $!context = Nil; # Holds the current evaluation context;
+has $!context; # Holds the current evaluation context;
 has Str $!sep = '';
 
 my %expr_cache = ();
@@ -13,8 +13,16 @@ method cache(XML::XPath:T:) {
     %expr_cache;
 }
 
-multi method evaluate(XML::XPath:D: Str $expr) {
+method new ($init_context = Nil){
+    self.bless(:context($init_context));
+}
+
+submethod BUILD (:$!context) { }
+
+multi method evaluate(XML::XPath:D: Str $expr, $context = Nil) {
     my $match = %expr_cache{$expr} //= XML::XPath::Grammar.parse($expr, :rule<Expr>);
+
+    $context and temp $!context = $context;
 
     $match.isa(Match:D) and return self.Expr($match);
 
@@ -23,8 +31,8 @@ multi method evaluate(XML::XPath:D: Str $expr) {
     return Nil;
 }
 
-multi method evaluate(XML::XPath:U: Str $expr) {
-    return self.new.evaluate($expr);
+multi method evaluate(XML::XPath:U: Str $expr, $context = Nil) {
+    return self.new.evaluate($expr, $context);
 }
 
 method !Something(Match $match) {
@@ -38,7 +46,7 @@ method !Something(Match $match) {
 }
 
 method Expr(Match $match) {
-    my @expr = map -> $es { self.ExprSingle($es); }, @($match<ExprSingle>);
+    my @expr = map -> $es { @(self.ExprSingle($es)); }, @($match<ExprSingle>);
 
     return @expr;
 }
@@ -182,8 +190,19 @@ method UnaryExpr(Match $match) {
 method PathExpr(Match $match) {
     temp $!sep;
     temp $!context;
+    if $match<root>:exists {
+	$!context.isa('XML::Document') and return $!context.root;
+	$!context.isa('XML::Node') and return $!context.ownerDocument.root;
+	die 'Attempt to match root node with no XML context';
+    }
+
+    if ($!context) {
+	$!context = $!context.ownerDocument.root if $match<sep>[0] && !$!context.isa('XML::Document');
+	$!context = $!context.root if $!context.isa('XML::Document');
+    }
+
     for 0..$match<sep>.end -> Int $i {
-	$!sep = '' ~ $match<sep>[$i];
+	$!sep = ~ $match<sep>[$i];
 	$!context = self.StepExpr($match<StepExpr>[$i]);
     }
     return $!context;
@@ -215,4 +234,60 @@ method Literal(Match $match) {
 
 method ParenthesizedExpr(Match $match) {
     return self.Expr($match<Expr>);
+}
+
+method AxisStep(Match $match) {
+    my ($axis, $nodetest);
+    if $match<AbbrevForwardStep> {
+	$axis = ($!sep eq '//') ?? 'descendant' !! 'child';
+	$nodetest = $match<AbbrevForwardStep><NodeTest>;
+	#@todo: Attribute abbrev test.
+    } elsif $match<AbbrevReverseStep> {
+	$axis = 'parent'; # I don't think //.. means ancestor, better check.
+	$nodetest = '*';
+    } else {
+	$axis = ~ $match<Axis>;
+	$nodetest = $match<NodeTest>;
+    }
+    my @nodes = self.Axis($axis, $nodetest);
+
+    for @($match<Predicate>) -> $pred {
+	@nodes = grep { temp $!context = $_; self.Expr($pred<Expr>) and return $_; Nil }, @nodes;
+    }
+
+    @nodes;
+}
+
+multi method Axis('child', $nodetest) {
+    $!context.nodes.grep: { temp $!context = $_; self.NodeTest($nodetest); };
+}
+
+multi method Axis('descendant', $nodetest --> Array) {
+    $!context.can('nodes') or return;
+    my @nodes = $!context.nodes;
+    my @dnodes;
+
+    for @nodes.grep: { $_.can('nodes') && $_.nodes } -> $node {
+	temp $!context = $node;
+	@dnodes.push(self.Axis('descendant', $nodetest));
+    }
+    @dnodes.unshift(@nodes.grep: { temp $!context = $_; self.NodeTest($nodetest); });
+}
+
+multi method Axis(Str $unsupported, $nodetest) {
+    warn "{$unsupported} axis is unsupported";
+    ...;
+}
+
+method NodeTest(Match $match) {
+    #TODO: Namespace handling
+    return True if $match[0] eq '*';
+    $match<NameTest> and return self.NameTest($match<NameTest>);
+    ...;
+}
+
+method NameTest(Match $match) {
+    #TODO: Namespace handling
+    $!context.can('name') or return False;
+    return $!context.name eq $match<QName><LocalPart>;
 }

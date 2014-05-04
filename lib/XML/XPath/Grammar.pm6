@@ -8,7 +8,10 @@ regex ws { [ <!ww> \s || <.comment> ]* }
 
 regex comment { '(:' [ <.comment> || . ]*? ':)' }
 
-rule Expr { <ExprSingle>+ % ',' }
+rule Expr { <ExprSingle>+ % ','
+	      # This doesn't work:
+	      #{ $/.to == $/.orig.chars or $/.postmatch.substr(0, 1) eq ')' or die "XPath expression error at #{$/.to} before '{$/.postmatch}'" }
+	}
 
 rule ExprSingle { <ForExpr> || <QuantifiedExpr> || <IfExpr> || <OrExpr> }
 
@@ -34,7 +37,7 @@ rule MultiplicativeExpr { <UnionExpr> + % $<op> =  [|| < * div idiv mod >] }
 
 rule UnionExpr { <IntersectExceptExpr> + % $<op> = [|| < union | >]  }
 
-rule IntersectExceptExpr { <InstanceofExpr> + % $<op> = [ || < intersect except > ] }
+rule IntersectExceptExpr { <InstanceofExpr> + % $<op> = [|| < intersect except >] }
 
 rule InstanceofExpr { <TreatExpr> [ 'instance' 'of' <SequenceType> ]? }
 
@@ -54,22 +57,16 @@ token NodeComp { 'is' || '<<' || '>>' }
 
 # xgs: leading-lone-slash
 # Shortcutting RelativePathExpr
-rule PathExpr { $<sep> = ['/'**0..2] <StepExpr>+ % $<sep> = ['/'**1..2] || $<root> = '/' } 
+rule PathExpr { $<sep> = ['/'**0..2] <StepExpr>+ % $<sep> = ['/'**1..2] || $<root> = '/' }
 
 token StepExpr { <FilterExpr> || <AxisStep> }
 
-rule AxisStep { [ <ReverseStep> || <ForwardStep> ] <Predicate>* }
+rule AxisStep { [ <Axis> '::' <NodeTest> || <AbbrevForwardStep> || <AbbrevReverseStep> ] <Predicate>* }
 
-rule ForwardStep { [ <ForwardAxis> '::' <NodeTest> ] || <AbbrevForwardStep> }
+token Axis {  || < child descendant attribute self descendant-or-self following-sibling
+		following namespace  parent ancestor preceding-sibling preceding ancestor-or-self > }
 
-token ForwardAxis {  || < child descendant attribute self descendant-or-self following-sibling 
-		          following namespace > }
-
-rule AbbrevForwardStep { '@'? <NodeTest> }
-
-rule ReverseStep { [ <ReverseAxis> '::' <NodeTest> ] || <AbbrevReverseStep> }
-
-token ReverseAxis { || < parent ancestor preceding-sibling preceding ancestor-or-self > }
+rule AbbrevForwardStep { $<attr> = '@'? <NodeTest> }
 
 token AbbrevReverseStep { '..' }
 
