@@ -56,20 +56,19 @@ be they XML::Nodes or literal values.
 
 ## Roadmap / ToDo
 
-Planned implementation order at this point is:
+The currently planned implementation order is:
 
-1. XML Contexts
-2. Node Tests
-3. Attribute Tests
-4. More advanced axes
-5. ...
+1. Node Tests
+2. Attribute Tests
+3. ...
+
+As progress is somewhat slow at the moment, there's no ETA for anything.
 
 ## How can I help?
 
 As they say in Perl estate; test cases, test cases, test cases; we can always
-use more.
-So far I've been developing on an implement and test basis - starting from point
-3 above the plan is to move to test-driven development.
+use more.  The project has now moved to a test-driven development model, so new
+features will need tests first.
 You're welcome to start implementing features as well.  Any pull requests are
 expected to either include tests or be for something that already has tests
 written.
