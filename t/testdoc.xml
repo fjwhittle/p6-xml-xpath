@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>XML Test Document</title>
+</head>
+<body>
+  <header>
+    <h1 id="article-header">This is the heading</h1>
+  </header>
+  <article>
+    <section>
+      <h2>A Section</h2>
+      <p>This is a section of text in the main article.</p>
+    </section>
+  </article>
+  <nav>
+    <ul class="list">
+      <li>Item 1</li>
+      <li>Item 2</li>
+      <li>Item 3</li>
+    </ul>
+  </nav>
+</body>
+</html>
