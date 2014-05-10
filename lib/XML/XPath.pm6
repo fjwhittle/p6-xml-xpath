@@ -75,15 +75,26 @@ method ComparisonExpr(Match $match) {
     if $match<RangeExpr>.elems > 1 {
 	if my $op = $match<ValueComp> {
 	    # TODO: Find if there's a better way to get an op coderef from a string; EVAL feels dirty.
-	    $op = EVAL "&infix:['$op']";
+	    given $op {
+		$op = &infix:<eq> when 'eq';
+		$op = &infix:<ne> when 'ne';
+		$op = &infix:<lt> when 'lt';
+		$op = &infix:<le> when 'le';
+		$op = &infix:<gt> when 'gt';
+		$op = &infix:<ge> when 'ge';
+	    }
 	    return $op(|map { self.RangeExpr($_) }, $match<RangeExpr>[0,1]);
 	} elsif $op = $match<GeneralComp> {
 	    # XPath's rule differ from Perl's junctions'
 	    return ?[⊖] map { self.RangeExpr($_) }, $match<RangeExpr>[0,1] if $op eq '!=';
 	    return self.RangeExpr($match<RangeExpr>[0]).all ne self.RangeExpr($match<RangeExpr>[1]).all
 	      if $op eq '!=';
-	    for qw{= eq < lt <= le > gt >= ge} -> $a, $b {
-		$op eq $a and $op = EVAL "&infix:['$b']";
+	    given $op {
+		$op = &infix:<eq> when '=';
+		$op = &infix:<lt> when '<';
+		$op = &infix:<le> when '<=';
+		$op = &infix:<gt> when '>';
+		$op = &infix:<ge> when '>=';
 	    }
 	    return ?$op(|map { self.RangeExpr($_).any }, $match<RangeExpr>[0,1]);
 	}
