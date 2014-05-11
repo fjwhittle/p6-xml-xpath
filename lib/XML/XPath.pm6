@@ -249,7 +249,7 @@ method ParenthesizedExpr(Match $match) {
 method AxisStep(Match $match) {
     my ($axis, $nodetest);
     if $match<AbbrevForwardStep> {
-	$axis = ($!sep eq '//') ?? 'descendant' !! 'child';
+	$axis = $match<AbbrevForwardStep><attr> eq '@' ?? 'attribute' !! ($!sep eq '//') ?? 'descendant' !! 'child';
 	$nodetest = $match<AbbrevForwardStep><NodeTest>;
 	#@todo: Attribute abbrev test.
     } elsif $match<AbbrevReverseStep> {
@@ -259,13 +259,18 @@ method AxisStep(Match $match) {
 	$axis = ~ $match<Axis>;
 	$nodetest = $match<NodeTest>;
     }
-    my @nodes = self.Axis($axis, $nodetest);
 
-    for @($match<Predicate>) -> $pred {
-	@nodes = grep { temp $!context = $_; self.Expr($pred<Expr>) and return $_; Nil }, @nodes;
-    }
+    set(@( $!context ).map: {
+	temp $!context = $_;
 
-    @nodes;
+	my @nodes = self.Axis($axis, $nodetest);
+
+	for @($match<Predicate>) -> $pred {
+	    @nodes = grep { temp $!context = $_; self.Expr($pred<Expr>) and return $_; Nil }, @nodes;
+	}
+
+	return @nodes;
+    }).keys;
 }
 
 multi method Axis('child', $nodetest) {
@@ -284,12 +289,27 @@ multi method Axis('descendant', $nodetest --> Array) {
     @dnodes.unshift(@nodes.grep: { temp $!context = $_; self.NodeTest($nodetest); });
 }
 
-multi method Axis(Str $unsupported, $nodetest) {
-    warn "{$unsupported} axis is unsupported";
-    ...;
+multi method Axis('parent', $nodetest) {
+    $!context.can('parent') or return;
+    temp $!context = $!context.parent;
+    $nodetest eq '*' || self.NodeTest($nodetest) and return $!context;
 }
 
-method NodeTest(Match $match) {
+multi method Axis('attribute', $nodetest) {
+    $!context.attribs:exists or return;
+    $nodetest<NameTest>:exists or fail 'Only Name tests supported for attributes';
+    return $!context.attribs{$nodetest.Str};
+}
+
+multi method Axis(Str $unsupported, $nodetest) {
+    fail "{$unsupported} axis is unsupported";
+}
+
+multi method NodeTest('*') {
+    True;
+}
+
+multi method NodeTest(Match $match) {
     #TODO: Namespace handling
     return True if $match[0] eq '*';
     $match<NameTest> and return self.NameTest($match<NameTest>);
@@ -299,5 +319,6 @@ method NodeTest(Match $match) {
 method NameTest(Match $match) {
     #TODO: Namespace handling
     $!context.can('name') or return False;
+    $match<Wildcard> eq '*' and return True;
     return $!context.name eq $match<QName><LocalPart>;
 }

@@ -7,7 +7,7 @@ use XML::XPath;
 
 use Test;
 
-plan 3;
+plan 5;
 
 my $doc = XML::Document.load('t/testdoc.xml') or die;
 
@@ -24,3 +24,11 @@ is $head.name, 'head', 'Immediate Child node-name';
 my @list_items = $xp.evaluate('//li');
 
 is @list_items.elems, 3, 'Descendant node-name';
+
+my ($list) = $xp.evaluate('//li/..');
+
+is $list.name, 'ul', 'Parent node';
+
+my ($attribute) = $xp.evaluate('//ul/@class');
+
+is $attribute, 'list', 'Attribute';

@@ -59,7 +59,7 @@ token NodeComp { 'is' || '<<' || '>>' }
 # Shortcutting RelativePathExpr
 rule PathExpr { $<sep> = ['/'**0..2] <StepExpr>+ % $<sep> = ['/'**1..2] || $<root> = '/' }
 
-token StepExpr { <FilterExpr> || <AxisStep> }
+token StepExpr { <AxisStep> || <FilterExpr> }
 
 rule AxisStep { [ <Axis> '::' <NodeTest> || <AbbrevForwardStep> || <AbbrevReverseStep> ] <Predicate>* }
 
@@ -74,7 +74,7 @@ rule NodeTest { <KindTest> || <NameTest> }
 
 rule NameTest { <QName> || <Wildcard> }
 
-rule Wildcard { '*' || (<NCName>':*') || ('*:'<NCName>) }
+rule Wildcard { '*' || (<Prefix=.NCName>':*') || ('*:'<LocalPart=.NCName>) }
 
 rule FilterExpr { <PrimaryExpr> <Predicate>* }
 
