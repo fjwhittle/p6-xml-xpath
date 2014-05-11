@@ -59,7 +59,7 @@ token NodeComp { 'is' || '<<' || '>>' }
 # Shortcutting RelativePathExpr
 rule PathExpr { $<sep> = ['/'**0..2] <StepExpr>+ % $<sep> = ['/'**1..2] || $<root> = '/' }
 
-token StepExpr { <AxisStep> || <FilterExpr> }
+regex StepExpr { <FilterExpr> || <AxisStep> }
 
 rule AxisStep { [ <Axis> '::' <NodeTest> || <AbbrevForwardStep> || <AbbrevReverseStep> ] <Predicate>* }
 
@@ -92,7 +92,7 @@ token StringLiteral { $<q>="'" <( [\'**2 || <-[']>]* )> "'" ||
 
 rule ParenthesizedExpr { '(' <Expr>? ')' }
 
-token ContextItemExpr { '.' }
+token ContextItemExpr { '.' <!before '.'> }
 
 rule FunctionCall { <QName> '(' (<ExprSingle> (',' <ExprSingle>)* )? ')' # xgs: reserved-function-names
 		      # gn: parens
