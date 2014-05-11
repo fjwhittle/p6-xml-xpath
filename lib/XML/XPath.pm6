@@ -85,10 +85,9 @@ method ComparisonExpr(Match $match) {
 	    }
 	    return $op(|map { self.RangeExpr($_) }, $match<RangeExpr>[0,1]);
 	} elsif $op = $match<GeneralComp> {
-	    # XPath's rule differ from Perl's junctions'
-	    return ?[⊖] map { self.RangeExpr($_) }, $match<RangeExpr>[0,1] if $op eq '!=';
-	    return self.RangeExpr($match<RangeExpr>[0]).all ne self.RangeExpr($match<RangeExpr>[1]).all
-	      if $op eq '!=';
+	    # XPath's non-equality rule for lists differs from Perl's junctions:
+	    # Use the difference of sets.
+	    return ?[⊖](map { my $r = self.RangeExpr($_) }, $match<RangeExpr>[0,1]) if $op eq '!=';
 	    given $op {
 		$op = &infix:<eq> when '=';
 		$op = &infix:<lt> when '<';
@@ -106,7 +105,7 @@ method ComparisonExpr(Match $match) {
 method RangeExpr(Match $match) {
     if $match<AdditiveExpr>.elems == 2 {
 	# Eagerify this because when do we want to deal with lazy lists?
-	return @(self.AdditiveExpr($match<AdditiveExpr>[0]) .. self.AdditiveExpr($match<AdditiveExpr>[1]));
+	return self.AdditiveExpr($match<AdditiveExpr>[0]) .. self.AdditiveExpr($match<AdditiveExpr>[1]);
     } else {
 	return self.AdditiveExpr($match<AdditiveExpr>[0]);
     }

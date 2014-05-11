@@ -3,7 +3,7 @@
 use XML::XPath;
 use Test;
 
-plan 6;
+plan 7;
 
 my $xp = XML::XPath.new;
 
@@ -32,3 +32,7 @@ is @r, (True, True, False), 'General comparison >=';
 @r = $xp.evaluate('(1, 2) > (2, 3), (1, 2) > (1, 2), (1, 3) > (3, 4)');
 
 is @r, (False, True, False), 'General comparison >';
+
+@r = $xp.evaluate('(1 to 4) != (1, 2, 3, 4), 1 to 4 != (1, 2, 3)');
+
+is @r, (False, True), 'Range comparison !=';
