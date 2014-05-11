@@ -42,11 +42,11 @@ method !Something(Match $match) {
 	return $subref[0](self, $step.value);
     }
 
-    die($step.key ~ " not supported!");
+    die "{$step.key} not supported!";
 }
 
 method Expr(Match $match) {
-    my @expr = map -> $es { @(self.ExprSingle($es)); }, @($match<ExprSingle>);
+    my @expr = $match<ExprSingle>.map: -> $es { @(self.ExprSingle($es)); };
 
     return @expr;
 }
@@ -83,11 +83,11 @@ method ComparisonExpr(Match $match) {
 		$op = &infix:<gt> when 'gt';
 		$op = &infix:<ge> when 'ge';
 	    }
-	    return $op(|map { self.RangeExpr($_) }, $match<RangeExpr>[0,1]);
+	    return $op(|$match<RangeExpr>[0,1].map: { self.RangeExpr($_) });
 	} elsif $op = $match<GeneralComp> {
 	    # XPath's non-equality rule for lists differs from Perl's junctions:
 	    # Use the difference of sets.
-	    return ?[⊖](map { my $r = self.RangeExpr($_) }, $match<RangeExpr>[0,1]) if $op eq '!=';
+	    return ?[⊖]($match<RangeExpr>[0,1].map: { my $r = self.RangeExpr($_) }) if $op eq '!=';
 	    given $op {
 		$op = &infix:<eq> when '=';
 		$op = &infix:<lt> when '<';
@@ -95,7 +95,7 @@ method ComparisonExpr(Match $match) {
 		$op = &infix:<gt> when '>';
 		$op = &infix:<ge> when '>=';
 	    }
-	    return ?$op(|map { self.RangeExpr($_).any }, $match<RangeExpr>[0,1]);
+	    return ?$op(|$match<RangeExpr>[0,1].map: { self.RangeExpr($_).any });
 	}
 	return self.NodeComp($match) if $match<NodeComp>;
     }
@@ -118,12 +118,12 @@ method AdditiveExpr(Match $match) {
 	my $nextval = self.MultiplicativeExpr($next);
 
 	if $value.does(Str) || $nextval.does(Str) {
-	    given ($op ~ '') {
+	    given ($op) {
 		$value ~= $nextval when '+';
 		$value ~~ s/$nextval// when '-';
 	    }
 	} else {
-	    given ($op ~ '') {
+	    given ($op) {
 		$value += $nextval when '+';
 		$value -= $nextval when '-';
 	    }
@@ -139,7 +139,7 @@ method MultiplicativeExpr(Match $match) {
     for @($match<UnionExpr>[1..*]) Z @($match<op>) -> $next, $op {
 	my $nextval = self.UnionExpr($next);
 
-	given ($op ~ '') {
+	given ($op) {
 	    $value *= $nextval when '*';
 	    $value /= $nextval when 'div';
 	    $value = Int($value) div Int($nextval) when 'idiv';
@@ -151,7 +151,7 @@ method MultiplicativeExpr(Match $match) {
 }
 
 method UnionExpr(Match $match) {
-    my $value = [∪] map { self.IntersectExceptExpr($_) },  @($match<IntersectExceptExpr>);
+    my $value = [∪] @($match<IntersectExceptExpr>).map: { self.IntersectExceptExpr($_) };
 
     return $value.end ?? $value.keys !! $value.keys[0];
 }
@@ -236,8 +236,8 @@ method FilterExpr(Match $match) {
 
 method Literal(Match $match) {
     $match<NumericLiteral>:exists and return $match<NumericLiteral> + 0;
-    my $val = $match<StringLiteral> ~ '';
-    my $q = $match<StringLiteral><q> ~ '';
+    my $val = ~ $match<StringLiteral>;
+    my $q = ~ $match<StringLiteral><q>;
     $val ~~ s:g/$q**2/$q/;
     return $val;
 }
@@ -251,13 +251,12 @@ method AxisStep(Match $match) {
     if $match<AbbrevForwardStep> {
 	$axis = $match<AbbrevForwardStep><attr> eq '@' ?? 'attribute' !! ($!sep eq '//') ?? 'descendant' !! 'child';
 	$nodetest = $match<AbbrevForwardStep><NodeTest>;
-	#@todo: Attribute abbrev test.
     } elsif $match<AbbrevReverseStep> {
 	$axis = 'parent'; # I don't think //.. means ancestor, better check.
 	$nodetest = '*';
     } else {
 	$axis = ~ $match<Axis>;
-	$nodetest = $match<NodeTest>;
+	$nodetest = $match<NodeTest;>
     }
 
     set(@( $!context ).map: {
@@ -266,7 +265,7 @@ method AxisStep(Match $match) {
 	my @nodes = self.Axis($axis, $nodetest);
 
 	for @($match<Predicate>) -> $pred {
-	    @nodes = grep { temp $!context = $_; self.Expr($pred<Expr>) and return $_; Nil }, @nodes;
+	    @nodes = @nodes.grep: { temp $!context = $_; self.Expr($pred<Expr>) };
 	}
 
 	return @nodes;
@@ -284,15 +283,15 @@ multi method Axis('descendant', $nodetest --> Array) {
 
     for @nodes.grep: { $_.can('nodes') && $_.nodes } -> $node {
 	temp $!context = $node;
-	@dnodes.push(self.Axis('descendant', $nodetest));
+	@dnodes.push: self.Axis('descendant', $nodetest);
     }
-    @dnodes.unshift(@nodes.grep: { temp $!context = $_; self.NodeTest($nodetest); });
+    @dnodes.unshift: @nodes.grep: { temp $!context = $_; self.NodeTest($nodetest); };
 }
 
 multi method Axis('parent', $nodetest) {
     $!context.can('parent') or return;
     temp $!context = $!context.parent;
-    $nodetest eq '*' || self.NodeTest($nodetest) and return $!context;
+    self.NodeTest($nodetest);
 }
 
 multi method Axis('attribute', $nodetest) {
@@ -306,7 +305,7 @@ multi method Axis(Str $unsupported, $nodetest) {
 }
 
 multi method NodeTest('*') {
-    True;
+    $!context;
 }
 
 multi method NodeTest(Match $match) {
@@ -318,7 +317,8 @@ multi method NodeTest(Match $match) {
 
 method NameTest(Match $match) {
     #TODO: Namespace handling
-    $!context.can('name') or return False;
-    $match<Wildcard> eq '*' and return True;
-    return $!context.name eq $match<QName><LocalPart>;
+    $!context.can('name') or return Nil;
+    $match<Wildcard> eq '*' || $!context.name eq $match<QName><LocalPart>
+      and return $!context;
+    Nil;
 }
