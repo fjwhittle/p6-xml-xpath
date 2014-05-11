@@ -171,10 +171,10 @@ method IntersectExceptExpr(Match $match_in) {
 	    my $nextval = self.UnaryExpr($next);
 	    given $op {
 		when 'intersect' {
-		    $value = $value (&) $nextval;
+		    $value = $value ∩ $nextval;
 		}
 		when 'except' {
-		    $value = $value (-) $nextval;
+		    $value = $value ∖ $nextval;
 		}
 	    }
 
