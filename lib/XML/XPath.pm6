@@ -207,13 +207,13 @@ method PathExpr(Match $match) {
     }
 
     if ($!context) {
-	$!context = $!context.ownerDocument.root if $match<sep>[0] && !$!context.isa('XML::Document');
+	$!context = $!context.ownerDocument.root if $match<sep>[0] eq '/' && !$!context.isa('XML::Document');
 	$!context = $!context.root if $!context.isa('XML::Document');
     }
 
-    for 0..$match<sep>.end -> Int $i {
-	$!sep = ~ $match<sep>[$i];
-	$!context = self.StepExpr($match<StepExpr>[$i]);
+    for @( $match<sep> ) Z @( $match<StepExpr> ) -> $sep, $n {
+	$!sep = ~ $sep;
+	$!context = self.StepExpr($n);
     }
     return $!context;
 }
@@ -256,7 +256,7 @@ method AxisStep(Match $match) {
 	$nodetest = '*';
     } else {
 	$axis = ~ $match<Axis>;
-	$nodetest = $match<NodeTest;>
+	$nodetest = $match<NodeTest>;
     }
 
     set(@( $!context ).map: {
@@ -265,10 +265,13 @@ method AxisStep(Match $match) {
 	my @nodes = self.Axis($axis, $nodetest);
 
 	for @($match<Predicate>) -> $pred {
-	    @nodes = @nodes.grep: { temp $!context = $_; self.Expr($pred<Expr>) };
+	    @nodes .= grep: {
+		temp $!context = $_;
+		? self.Expr($pred<Expr>).shift; # See http://www.w3.org/TR/xpath20/#dt-ebv
+	    };
 	}
+	@nodes;
 
-	return @nodes;
     }).keys;
 }
 
@@ -296,8 +299,8 @@ multi method Axis('parent', $nodetest) {
 
 multi method Axis('attribute', $nodetest) {
     $!context.attribs:exists or return;
-    $nodetest<NameTest>:exists or fail 'Only Name tests supported for attributes';
-    return $!context.attribs{$nodetest.Str};
+    $nodetest<NameTest> or fail 'Only Name tests supported for attributes';
+    return $!context.attribs{$nodetest.Str} || ();
 }
 
 multi method Axis(Str $unsupported, $nodetest) {

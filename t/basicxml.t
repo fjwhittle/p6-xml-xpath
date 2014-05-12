@@ -7,7 +7,7 @@ use XML::XPath;
 
 use Test;
 
-plan 5;
+plan 6;
 
 my $doc = XML::Document.load('t/testdoc.xml') or die;
 
@@ -32,3 +32,7 @@ is $list.name, 'ul', 'Parent node';
 my ($attribute) = $xp.evaluate('//ul/@class');
 
 is $attribute, 'list', 'Attribute';
+
+my ($something) = $xp.evaluate('//*[@class="list"]');
+
+is $something.name, 'ul', 'Attribute Predicate';
