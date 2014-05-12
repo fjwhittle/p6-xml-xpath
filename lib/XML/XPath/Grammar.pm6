@@ -47,7 +47,7 @@ rule CastableExpr { <CastExpr> [ 'castable' 'as' <SingleType> ]? }
 
 rule CastExpr { <UnaryExpr> [ 'cast' 'as' <SingleType> ]? }
 
-rule UnaryExpr { $<op> = [<[+-]> *] <ValueExpr=.PathExpr> }
+rule UnaryExpr { [$<op> = <[+-]> ]* <ValueExpr=.PathExpr> }
 
 token GeneralComp { '=' || '!='  || '<=' || '<' || '>=' || '>'  }
 
