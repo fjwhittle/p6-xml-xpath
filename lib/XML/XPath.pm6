@@ -298,9 +298,8 @@ multi method Axis('parent', $nodetest) {
 }
 
 multi method Axis('attribute', $nodetest) {
-    $!context.attribs:exists or return;
     $nodetest<NameTest> or fail 'Only Name tests supported for attributes';
-    return $!context.attribs{$nodetest.Str} || ();
+    $!context.can('attribs') && $!context.attribs{$nodetest.Str} or ();
 }
 
 multi method Axis(Str $unsupported, $nodetest) {
