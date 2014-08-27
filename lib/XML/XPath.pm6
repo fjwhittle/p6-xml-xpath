@@ -73,29 +73,29 @@ method AndExpr(Match $match) {
 
 method ComparisonExpr(Match $match) {
     if $match<RangeExpr>.elems > 1 {
+	my Code $opc;
 	if my $op = $match<ValueComp> {
-	    # TODO: Find if there's a better way to get an op coderef from a string; EVAL feels dirty.
 	    given $op {
-		$op = &infix:<eq> when 'eq';
-		$op = &infix:<ne> when 'ne';
-		$op = &infix:<lt> when 'lt';
-		$op = &infix:<le> when 'le';
-		$op = &infix:<gt> when 'gt';
-		$op = &infix:<ge> when 'ge';
+		$opc = &infix:<eq> when 'eq';
+		$opc = &infix:<ne> when 'ne';
+		$opc = &infix:<lt> when 'lt';
+		$opc = &infix:<le> when 'le';
+		$opc = &infix:<gt> when 'gt';
+		$opc = &infix:<ge> when 'ge';
 	    }
-	    return $op(|$match<RangeExpr>[0,1].map: { self.RangeExpr($_) });
+	    return $opc(|$match<RangeExpr>[0,1].map: { self.RangeExpr($_) });
 	} elsif $op = $match<GeneralComp> {
 	    # XPath's non-equality rule for lists differs from Perl's junctions:
 	    # Use the difference of sets.
 	    return ?[⊖]($match<RangeExpr>[0,1].map: { my $r = self.RangeExpr($_) }) if $op eq '!=';
 	    given $op {
-		$op = &infix:<eq> when '=';
-		$op = &infix:<lt> when '<';
-		$op = &infix:<le> when '<=';
-		$op = &infix:<gt> when '>';
-		$op = &infix:<ge> when '>=';
+		$opc = &infix:<eq> when '=';
+		$opc = &infix:<lt> when '<';
+		$opc = &infix:<le> when '<=';
+		$opc = &infix:<gt> when '>';
+		$opc = &infix:<ge> when '>=';
 	    }
-	    return ?$op(|$match<RangeExpr>[0,1].map: { self.RangeExpr($_).any });
+	    return ?$opc(|$match<RangeExpr>[0,1].map: { self.RangeExpr($_).any });
 	}
 	return self.NodeComp($match) if $match<NodeComp>;
     }
