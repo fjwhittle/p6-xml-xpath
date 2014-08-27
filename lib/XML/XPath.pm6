@@ -312,15 +312,16 @@ multi method NodeTest('*') {
 
 multi method NodeTest(Match $match) {
     #TODO: Namespace handling
-    return True if $match[0] eq '*';
     $match<NameTest> and return self.NameTest($match<NameTest>);
     ...;
 }
 
 method NameTest(Match $match) {
     #TODO: Namespace handling
-    $!context.can('name') or return Nil;
-    $match<Wildcard> eq '*' || $!context.name eq $match<QName><LocalPart>
-      and return $!context;
-    Nil;
+    if $match<Wildcard> && $match<Wildcard> eq '*' or
+      $!context.can('name') && $!context.name eq $match<QName><LocalPart> {
+	return $!context;
+    } else {
+	Nil;
+    }
 }
