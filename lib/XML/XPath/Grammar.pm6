@@ -8,10 +8,7 @@ regex ws { [ <!ww> \s || <.comment> ]* }
 
 regex comment { '(:' [ <.comment> || . ]*? ':)' }
 
-rule Expr { <ExprSingle>+ % ','
-	      # This doesn't work:
-	      #{ $/.to == $/.orig.chars or $/.postmatch.substr(0, 1) eq ')' or die "XPath expression error at #{$/.to} before '{$/.postmatch}'" }
-	}
+rule Expr { <ExprSingle>+ % ',' }
 
 rule ExprSingle { <ForExpr> || <QuantifiedExpr> || <IfExpr> || <OrExpr> }
 
@@ -143,8 +140,6 @@ token AttributeName { <QName> }
 token ElementName { <QName> }
 
 token TypeName { <QName> }
-
-#`(@todo:)
 
 token QName { [<Prefix=.NCName>':']?<LocalPart=.NCName> }
 
