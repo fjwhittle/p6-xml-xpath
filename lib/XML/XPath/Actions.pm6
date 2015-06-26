@@ -156,7 +156,7 @@ method UnionExpr ($/) {
 
 method IntersectExceptExpr ($/) {
   if $<InstanceofExpr>.end {
-    my @submatch = $<InstanceofExpr>.map: -> $expr { $expr<TreatExpr><CastableExpr><CastExpr><UnaryExpr>.made };
+    my @submatch = $<InstanceofExpr>».made;
     my @opl = ~$_ for $<op>;
     $/.make: -> $ctx {
       my $value = @submatch.shift.($ctx);
@@ -174,11 +174,41 @@ method IntersectExceptExpr ($/) {
       $orig.grep: { $value{$_} };
     };
   } else {
-    $/.make: $<InstanceofExpr>[0]<TreatExpr><CastableExpr><CastExpr><UnaryExpr>.made;
+    $/.make: $<InstanceofExpr>[0].made;
   }
 }
 
-# SKIPPED: InstanceofExpr TreatExpr CastableExpr CastExpr
+method InstanceofExpr ($/) {
+    if $<SequenceType>:exists {
+	...
+    } else {
+	$/.make: $<TreatExpr>.made;
+    }
+}
+
+method TreatExpr ($/) {
+    if $<SequenceType>:exists {
+	...
+    } else {
+	$/.make: $<CastableExpr>.made;
+    }
+}
+
+method CastableExpr ($/) {
+    if $<SingleType>:exists {
+	...
+    } else {
+	$/.make: $<CastExpr>.made;
+    }
+}
+
+method CastExpr ($/) {
+    if $<SingleType>:exists {
+	...
+    } else {
+	$/.make: $<UnaryExpr>.made;
+    }
+}
 
 method UnaryExpr ($/) {
   $/.make: $<op> eq '-' ?? -> $ctx { - $<ValueExpr>.made.($ctx) } !! $<ValueExpr>.made;
