@@ -1,6 +1,6 @@
 use v6;
 
-class XML::XPath;
+unit class XML::XPath;
 
 use XML::XPath::Grammar;
 
