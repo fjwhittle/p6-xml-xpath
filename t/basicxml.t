@@ -7,7 +7,7 @@ use XML::XPath;
 
 use Test;
 
-plan 6;
+plan 7;
 
 my $doc = XML::Document.load('t/testdoc.xml') or die;
 
@@ -36,3 +36,7 @@ is $attribute, 'list', 'Attribute';
 my ($something) = $xp.evaluate('//*[@class="list"]');
 
 is $something.name, 'ul', 'Attribute Predicate';
+
+my ($chained) = $xp.evaluate('//*[li][@class]/@class');
+
+is $chained, 'list', 'Chained Predicate';
