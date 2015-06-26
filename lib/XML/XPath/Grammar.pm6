@@ -1,6 +1,6 @@
 use v6;
 
-grammar XML::XPath::Grammar;
+unit grammar XML::XPath::Grammar;
 
 rule TOP { <Expr> }
 
