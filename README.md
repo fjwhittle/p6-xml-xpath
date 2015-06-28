@@ -12,10 +12,11 @@ useful.
 
 ## Scope
 
-Currently two modules are provided with the library, these are:
+Currently three modules are provided with the library, these are:
 
-* **XML::XPath** for evaluation of expressions, and
-* **XML::XPath::Grammar** for parsing expression input.
+* **XML::XPath** for evaluation of expressions,
+* **XML::XPath::Grammar** for parsing expression input and
+* **XML::XPath::Actions** to compile the expression AST
 
 **XML::XPath::Grammar** is near complete for the XPath 2.0 specification, but
 does not handle XPath 1.0 compatibility or have any explicit support for XPath
@@ -29,7 +30,7 @@ XML tree and comparison operations.  So far, the following is implemented:
 * Unary negation
 * Numeric arithmetic and String concatenation
 * Range expressions
-* Set operations ( union, intersect, except ) (_BUGGY_)
+* Set operations ( union, intersect, except )
 * And, Or
 * Value and Generic (set) comparison
 * Filters ( [] )
@@ -51,7 +52,7 @@ XML tree and comparison operations.  So far, the following is implemented:
 	
 ```
 
-`evaluate(Str $expr)` produces an _Array_ of results matching _`$expr`_,
+`evaluate(Str $expr)` produces a _List_ of results matching _`$expr`_,
 be they XML::Nodes or literal values.
 
 ## Roadmap / ToDo
