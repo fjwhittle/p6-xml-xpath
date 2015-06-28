@@ -16,9 +16,9 @@
   </article>
   <nav>
     <ul class="list">
-      <li>Item 1</li>
-      <li>Item 2</li>
-      <li>Item 3</li>
+      <li class="list-item">Item 1</li>
+      <li class="list-item" data-test="test">Item 2</li>
+      <li data-test="test">Item 3</li>
     </ul>
   </nav>
 </body>

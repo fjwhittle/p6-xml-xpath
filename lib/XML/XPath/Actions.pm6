@@ -1,4 +1,5 @@
 use v6;
+use XML;
 
 unit class XML::XPath::Actions;
 
@@ -143,21 +144,27 @@ method MultiplicativeExpr ($/) {
   }
 }
 
+my %so-cache; # Temporize per call to avoid caching old trees.
+
+sub get-source-order(XML::Node $n) {
+  %so-cache{$n} //= $n.parent ?? (get-source-order($n.parent), $n.parent.nodes.grep-index($n)) !! ();
+}
+
 method UnionExpr ($/) {
   if $<IntersectExceptExpr>.end {
     $/.make: -> $ctx {
-      ([∪] $<IntersectExceptExpr>».made».($ctx)).keys;
+      temp %so-cache;
+      ([∪] $<IntersectExceptExpr>».made».($ctx)).list.sort: { get-source-order($^a) cmp get-source-order($^b) };
     }
   } else {
     $/.make: $<IntersectExceptExpr>[0].made;
   }
 }
 
-
 method IntersectExceptExpr ($/) {
   if $<InstanceofExpr>.end {
     my @submatch = $<InstanceofExpr>».made;
-    my @opl = ~$_ for $<op>;
+    my @opl = $<op>.map: ~*;
     $/.make: -> $ctx {
       my $value = @submatch.shift.($ctx);
       my $orig = $value;
@@ -171,7 +178,8 @@ method IntersectExceptExpr ($/) {
 	  }
 	}
       }
-      $orig.grep: { $value{$_} };
+      temp %so-cache;
+      $value.list.sort: { get-source-order($^a) cmp get-source-order($^b) };
     };
   } else {
     $/.make: $<InstanceofExpr>[0].made;
