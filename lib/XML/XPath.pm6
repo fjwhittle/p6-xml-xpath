@@ -18,7 +18,7 @@ multi method evaluate(XML::XPath:D: Str $expr, $context = Nil) {
       XML::XPath::Grammar.parse($expr, :rule<Expr>, :$!actions).made;
 
     $context and temp $!context = $context;
-    return $ast».($!context);
+    return @( $ast».($!context) );
 }
 
 multi method evaluate(XML::XPath:U: Str $expr, $context = Nil) {
