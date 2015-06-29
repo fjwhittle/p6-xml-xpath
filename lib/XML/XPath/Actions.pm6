@@ -68,7 +68,7 @@ method ComparisonExpr ($/) {
       $/.make: sub ($ctx) {
 	# XPath's non-equality rule for lists differs from Perl's junctions:
 	# Use the difference of sets.
-	return ?[⊖](| $range_expr.map: -> $_ { [ .($ctx) ] }) if $op eq '!=';
+	return ?[⊖](| $range_expr.map: { [ .($ctx) ] }) if $op eq '!=';
 	given $op {
 	  $opc = &infix:<eq> when '=';
 	  $opc = &infix:<lt> when '<';
@@ -76,7 +76,7 @@ method ComparisonExpr ($/) {
 	  $opc = &infix:<gt> when '>';
 	  $opc = &infix:<ge> when '>=';
 	}
-	return ?$opc(| $range_expr.map: -> $_ { .($ctx).any });
+	return ?$opc(| $range_expr.map: { .($ctx).any });
       }
     } elsif $<NodeComp> {
       $/.make: $<NodeComp>.made;
