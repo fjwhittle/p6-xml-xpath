@@ -238,13 +238,16 @@ method PathExpr ($/) {
       }
     }
   } else {
+    my @sep = $<sep>.map: ~*;
+    my @StepExpr = $<StepExpr>».made;
+    my @AxisStep = $<StepExpr>.map: { ?.<AxisStep> };
     $/.make: -> $ctx {
       my $context = $ctx;
-      for (@($<sep>) Z @($<StepExpr>)) -> [$sep, $expr] {
-	if $expr<AxisStep> {
-	  $context = $expr».made».($context, $sep);
+      for @sep Z @StepExpr Z @AxisStep -> [$sep, $expr, $axis] {
+	if $axis {
+	  $context = $expr($context, $sep);
 	} else {
-	  $context = $expr.made».($context);
+	  $context = $expr($context);
 	}
       }
       @$context.flat.end ?? @$context.flat !! $context[0];
