@@ -4,7 +4,9 @@ use XML;
 unit class XML::XPath::Actions;
 
 method Expr ($/) {
-  $/.make: $<ExprSingle>».made;
+  $/.make: -> $ctx {
+    $<ExprSingle>».made».($ctx).map(*.flat).flat.list;
+  }
 }
 
 method ExprSingle ($/) {
@@ -23,8 +25,8 @@ method OrExpr ($/) {
   if $<AndExpr>.end {
     $/.make: -> $ctx {
       my $r;
-      for @($<AndExpr>) -> $submatch {
-	$r = $submatch.made.($ctx) and last;
+      for @($<AndExpr>) {
+	last if $r = .made.($ctx).grep(?*).list;
       }
       $r;
     }
@@ -37,8 +39,8 @@ method AndExpr ($/) {
   if $<ComparisonExpr>.end {
     $/.make: -> $ctx {
       my $r;
-      for @($<ComparisonExpr>) -> $submatch {
-	$r = $submatch.made.($ctx) or last;
+      for @($<ComparisonExpr>) {
+	last unless $r = .made.($ctx).grep(?*).list;
       }
       $r;
     }
@@ -49,11 +51,11 @@ method AndExpr ($/) {
 
 method ComparisonExpr ($/) {
   if $<RangeExpr>.end {
-    my $range_expr = $<RangeExpr>».made;
-
-    my Code $opc;
-    if my $op = ~$<ValueComp> {
-      $/.make: sub ($ctx) {
+    my $m = $/;
+    $/.make: sub ($ctx --> Bool) {
+      my @cval = $m<RangeExpr>[0,1]».made».($ctx)».grep(*.defined)».list;
+      my Code $opc;
+      if my $op = ~$m<ValueComp> {
 	given $op.lc {
 	  $opc = &infix:<eq> when 'eq';
 	  $opc = &infix:<ne> when 'ne';
@@ -62,13 +64,11 @@ method ComparisonExpr ($/) {
 	  $opc = &infix:<gt> when 'gt';
 	  $opc = &infix:<ge> when 'ge';
 	}
-	return $opc(|$range_expr».($ctx));
-      }
-    } elsif $op = ~$<GeneralComp> {
-      $/.make: sub ($ctx) {
+	return $opc(|@cval);
+      } elsif $op = ~$m<GeneralComp> {
 	# XPath's non-equality rule for lists differs from Perl's junctions:
 	# Use the difference of sets.
-	return ?[⊖](| $range_expr.map: { [ .($ctx) ] }) if $op eq '!=';
+	return ?[⊖](|@cval) if $op eq '!=';
 	given $op {
 	  $opc = &infix:<eq> when '=';
 	  $opc = &infix:<lt> when '<';
@@ -76,21 +76,18 @@ method ComparisonExpr ($/) {
 	  $opc = &infix:<gt> when '>';
 	  $opc = &infix:<ge> when '>=';
 	}
-	return ?$opc(| $range_expr.map: { .($ctx).any });
+	return ?$opc(|@cval».any);
       }
-    } elsif $<NodeComp> {
-      $/.make: $<NodeComp>.made;
+      return $m<NodeComp>.made.($ctx) if $m<NodeComp>;
     }
   } else {
     $/.make: $<RangeExpr>[0].made;
   }
 }
 
-
 method RangeExpr ($/) {
   if $<AdditiveExpr>.end {
-    my ($from_expr, $to_expr) = $<AdditiveExpr>».made;
-    $/.make: -> $ctx { $from_expr.($ctx) .. $to_expr.($ctx) };
+    $/.make: -> $ctx { $<AdditiveExpr>[0].made.($ctx)[0]..$<AdditiveExpr>[1].made.($ctx)[0]; };
   } else {
     $/.make: $<AdditiveExpr>[0].made;
   }
@@ -98,11 +95,10 @@ method RangeExpr ($/) {
 
 method AdditiveExpr ($/) {
   if $<MultiplicativeExpr>.end {
-    my @multi_expr = $<MultiplicativeExpr>».made;
     $/.make: -> $ctx {
-      my $value = @multi_expr.shift.($ctx);
-      for @(@multi_expr».($ctx)) Z @($<op>) -> [$next, $op] {
-	if $value.does(Str) || $next.does(Str) {
+      my $value = $<MultiplicativeExpr>.shift.made.($ctx)[0];
+      for @($<MultiplicativeExpr>».made».($ctx)»[0]) Z @($<op>) -> [$next, $op] {
+	if ($value | $next).does(Str) {
 	  given $op {
 	    $value ~= $next when '+';
 	    $value ~~ s/$next// when '-';
@@ -124,11 +120,10 @@ method AdditiveExpr ($/) {
 
 method MultiplicativeExpr ($/) {
   if $<UnionExpr>.end {
-    my @union_expr = $<UnionExpr>».made;
     $/.make: -> $ctx {
-      my $value = @union_expr.shift.($ctx);
+      my $value = $<UnionExpr>.shift.made.($ctx)[0];
 
-      for @(@union_expr».($ctx)) Z @($<op>) -> [$next, $op] {
+      for @($<UnionExpr>».made».($ctx)»[0]) Z @($<op>) -> [$next, $op] {
 	given ($op) {
 	  $value *= $next when '*';
 	  $value /= $next when 'div';
@@ -146,9 +141,13 @@ method MultiplicativeExpr ($/) {
 
 my %so-cache; # Temporize per call to avoid caching old trees.
 
-sub get-source-order(XML::Node $n) {
-  %so-cache{$n} //= $n.parent ?? (get-source-order($n.parent), $n.parent.nodes.grep-index($n)) !! ();
+multi sub get-source-order($n where *.parent.can('index-of') ) {
+  %so-cache{$n} //= (get-source-order($n.parent), $n.parent.index-of($n)).flat;
 }
+
+multi sub get-source-order($n) {
+  ();
+};
 
 method UnionExpr ($/) {
   if $<IntersectExceptExpr>.end {
@@ -163,23 +162,26 @@ method UnionExpr ($/) {
 
 method IntersectExceptExpr ($/) {
   if $<InstanceofExpr>.end {
-    my @submatch = $<InstanceofExpr>».made;
-    my @opl = $<op>.map: ~*;
     $/.make: -> $ctx {
+      my @submatch = $<InstanceofExpr>.map: { .<TreatExpr><CastableExpr><CastExpr><UnaryExpr>.made };
+      my @opl = $<op>».Str;
       my $value = @submatch.shift.($ctx);
-      my $orig = $value;
+      $value.all ~~ XML::Node or X::TypeCheck.new('IntersectExceptExpr only works on XML::Node objects').die;
       for @submatch Z @opl -> [$next, $op] {
-	given $op {
-	  when 'intersect' {
-	    $value ∩= $next.($ctx);
-	  }
-	  when 'except' {
-	    $value ∖= $next.($ctx);
-	  }
-	}
+        given $op {
+          when 'intersect' {
+            $value ∩= $next.($ctx);
+          }
+          when 'except' {
+            $value ∖= $next.($ctx);
+          }
+        }
       }
+      $value .= keys;
       temp %so-cache;
-      $value.list.sort: { get-source-order($^a) cmp get-source-order($^b) };
+      $value .= sort({ get-source-order($^a) cmp get-source-order($^b) });
+      $value .= list;
+      $value;
     };
   } else {
     $/.make: $<InstanceofExpr>[0].made;
@@ -238,66 +240,64 @@ method PathExpr ($/) {
       }
     }
   } else {
-    my @sep = $<sep>.map: ~*;
-    my @StepExpr = $<StepExpr>».made;
-    my @AxisStep = $<StepExpr>.map: { ?.<AxisStep> };
-    $/.make: -> $ctx {
-      my $context = $ctx;
-      for @sep Z @StepExpr Z @AxisStep -> [$sep, $expr, $axis] {
-	if $axis {
-	  $context = $expr($context, $sep);
-	} else {
-	  $context = $expr($context);
-	}
+    $/.make: -> $ctx is copy {
+      for (@($<sep>) Z @($<StepExpr>)) -> [$sep, $expr] {
+        if $expr<AxisStep> {
+          $ctx = $expr.made.($ctx, $sep);
+        } else {
+          $ctx = $expr.made.($ctx);
+        }
       }
-      @$context.flat.end ?? @$context.flat !! $context[0];
+
+      $ctx.list;
     }
   }
 }
 
 method StepExpr ($/) {
-  $/.make: $<FilterExpr>.made || $<AxisStep>.made;
+  $/.make: ($<FilterExpr> || $<AxisStep>).made;
 }
 
-method AxisStep($/) {
-  my ($axis, $nodetest, $axis_ast);
-  if $<AbbrevForwardStep> {
-    $axis = ($<AbbrevForwardStep><attr> eq '@') ?? 'attribute' !! 'child';
-    $nodetest = $<AbbrevForwardStep><NodeTest>.made;
-    $axis_ast = -> $ctx, $sep {
-      $sep eq '//' and $axis eq 'child' and $axis = 'descendant';
+method AxisStep($m) {
+  my ($axis, $nodetest);
+  if $m<AbbrevForwardStep> {
+    $m.make: sub ($ctx, $sep) {
+      $axis = $m<AbbrevForwardStep><attr> eq '@' ?? 'attribute' !! ($sep eq '//') ?? 'descendant' !! 'child';
+      $nodetest = $m<AbbrevForwardStep><NodeTest>.made;
       testAxis($axis, $nodetest, $ctx);
     }
-  } elsif $<AbbrevReverseStep> {
-    $axis_ast = -> $ctx, $sep {
+  } elsif $m<AbbrevReverseStep> {
+    $m.make: sub ($ctx, $sep) {
       $axis = 'parent';
       $nodetest = &matchany;
       testAxis($axis, $nodetest, $ctx);
     }
   } else {
-    $nodetest = $<NodeTest>.made;
-    $axis = ~$<Axis>;
-    $axis_ast = -> $ctx, $sep {
+    $m.make: sub ($ctx, $sep) {
+      $axis = ~$m<Axis>;
+      $nodetest = $m<NodeTest>.made;
       testAxis($axis, $nodetest, $ctx);
     }
   }
 
-  if ($<Predicate>) {
-    my $pct_ast = $<Predicate>».made;
-    $/.make: -> $ctx, $sep {
-      $axis_ast($ctx, $sep).grep: -> $subctx {
-	[&&] $pct_ast».($subctx);
+  if $m<Predicate> {
+    $m.made.wrap: -> $ctx , $sep {
+      my @context = callsame;
+      for $m<Predicate>»<Expr> -> $pred {
+	@context .= grep: {
+	  $pred.made.($_).all;
+	};
+	@context .= list;
       }
+      @context;
     }
-  } else {
-    $/.make: $axis_ast;
   }
 }
 
 # SKIPPED: Axis AbbrevForwardStep AbbrevReverseStep
 
 method NodeTest ($/) {
-  $/.make: $<KindTest>.made || $<NameTest>.made;
+  $/.make: ($<NameTest> || $<KindTest>).made;
 }
 
 method NameTest ($/) {
@@ -308,44 +308,40 @@ method NameTest ($/) {
     $/.make: -> $ctx { ... }
   } else {
     $/.make: -> $ctx {
-      if $ctx.isa('Hash') && ($ctx{$lname}:exists) {
-	$ctx{$lname};
-      } elsif $ctx.can('name') && $ctx.name eq $lname {
-	$ctx;
-      } else {
-	Nil;
+      quietly {
+	if $ctx.?name eq $lname {
+	  $ctx;
+	} elsif $ctx ~~ Hash {
+	  $ctx.{$lname} || Nil;
+	} else {
+	  Nil;
+	}
       }
-    };
+    }
   }
 }
 
 # SKIPPED: Wildcard
 
 method FilterExpr ($/) {
-  my $primary_expr = $<PrimaryExpr>.made;
   if $<Predicate> {
-    my $predicate = $<Predicate>».made;
-    $/.make: -> $ctx {
-      $primary_expr.($ctx).grep: -> $subctx {
-	so [&&] $predicate».($subctx);
-      }
-    }
+    $/.make: -> $ctx is copy {
+      $ctx = $<PrimaryExpr>.made.($ctx);
+      $<Predicate><Expr>.made.($ctx) and $ctx;
+    };
   } else {
-    $/.make: $primary_expr;
+    $/.make: $<PrimaryExpr>.made;
   }
 }
 
-method Predicate ($/) {
-  $/.make: $<Expr>.made;
-}
+# SKIPPED: Predicate
 
 method PrimaryExpr ($/) {
-  $/.make: $<Literal>.made || $<VarName>.made || $<ParenthesizedExpr>.made
-    || $<ContextItemExpr>.made || $<FunctionCall>.made;
+  $/.make: ($<Literal> || $<VarName> || $<ParenthesizedExpr> || $<ContextItemExpr> || $<FunctionCall>).made;
 }
 
 method Literal ($/) {
-  my $lit = $<NumericLiteral>.made || $<StringLiteral>.made;
+  my $lit = ($<NumericLiteral> || $<StringLiteral>).made;
   $/.make: -> $ctx { $lit };
 }
 
@@ -355,8 +351,8 @@ method NumericLiteral ($/) {
 
 method StringLiteral ($m) {
   my $val = ~$m;
-  my $quot = $m<q>; #>;
-  $val ~~ s:g/ $quot**2/$quot/;
+  my $quot = $m<q>;
+  $val ~~ s:g/$quot**2/$quot/;
   $m.make: $val;
 }
 
@@ -378,7 +374,9 @@ method ItemType ($/) { ... };
 
 method AtomicType ($/) { ... };
 
-method KindTest ($/) { ... };
+method KindTest($/) {
+  $/.make: -> $ctx { ... };
+}
 
 method AnyKindTest ($/) { ... };
 
@@ -428,16 +426,16 @@ my sub matchany ($ctx) {
 }
 
 multi sub testAxis('child', Code $nodetest, $ctx) {
-  $ctx.nodes.grep: -> $node { $nodetest($node); };
+  $ctx.nodes.grep(-> $node { $nodetest($node); }).list;
 }
 
 multi sub testAxis('descendant', Code $nodetest, $ctx) {
-  my @nodes = $ctx.nodes;
+  my @nodes = $ctx.?nodes or return;
   my @dnodes;
 
-  for @nodes.grep: -> $n { $n.can('nodes') && $n.nodes } -> $node {
+  for @nodes.grep: { .?nodes } -> $node {
     $nodetest($node) and @dnodes.push: $node;
-    @dnodes.push: testAxis('descendant', $nodetest, $node);
+    @dnodes.append: testAxis('descendant', $nodetest, $node);
   }
 
   @dnodes;
@@ -452,5 +450,5 @@ multi sub testAxis('attribute', Code $nodetest, $ctx) {
 }
 
 multi sub testAxis(Str $unsupported, Code $nodetest, $ctx) {
-  fail "{$unsupported} axis is unsupported";
+  fail "{$unsupported} axis is unsupported for {$ctx.^name}";
 }
